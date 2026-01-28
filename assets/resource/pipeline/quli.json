@@ -1,0 +1,41 @@
+{
+    "quli":{
+        "recognition": "DirectHit",
+        "action": "DoNothing"
+    },
+    "quli40": {
+        "recognition": "OCR",
+        "action": "Click",
+        "expected": ["LV.40"],
+        "next": ["开始挑战1","开始挑战2"]
+    },
+    "quli60": {
+        "recognition": "OCR",
+        "action": "Click",
+        "expected": ["LV.60"],
+        "next": ["开始挑战1","开始挑战2"]
+    },
+    "quli80": {
+        "recognition": "OCR",
+        "action": "Click",
+        "expected": ["LV.80"],
+        "next": ["开始挑战1","开始挑战2"]
+    },
+    "quli100": {
+        "recognition": "OCR",
+        "action": "Click",
+        "expected": ["LV.100"],
+        "next": ["开始挑战1","开始挑战2"]
+    },
+    "开始挑战1": {
+        "recognition": "OCR",
+        "action": "Click",
+        "expected": ["开始挑战"]
+    }, 
+    "开始挑战2": {
+        "recognition": "OCR",
+        "action": "Click",
+        "expected": ["开始挑战"],
+        "next": ["在驱离副本中"]
+    }
+}
