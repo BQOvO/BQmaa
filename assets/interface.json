@@ -1,9 +1,5 @@
 {
     "interface_version": 2,
-    "languages": {
-        "zh_cn": "interface_zh.json",
-        "en_us": "interface_en.json"
-    },
     "name": "BQMaaDNA",
     "description": "这是一个BQ使用 MaaFramework 创建的二重螺旋自动化脚本。",
     "contact": "QQ群: 123456789",
@@ -32,15 +28,16 @@
         }
     ],
     "agent": {
-         "child_exec": "python",
-         "child_args": [
-             "./agent/main.py"
-         ]
-     },
+    "child_exec": "./python/python.exe",
+    "child_args": [
+      "-u",
+      "./agent/main.py"
+    ]
+    },
     "task": [
         {
             "name": "魔之楔驱离",
-            "entry": "quli40",
+            "entry": "quli",
             "option": ["魔之楔挑战等级"],
             "default_check": false,
             "description": "黎瑟主控，按键布局为官方默认第一套，注意：黎瑟需要一定练度"
