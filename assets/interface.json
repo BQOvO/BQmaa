@@ -1,6 +1,7 @@
 {
     "interface_version": 2,
     "name": "BQMaaDNA",
+    "title": "BQMaaDNA",
     "description": "这是一个BQ使用 MaaFramework 创建的二重螺旋自动化脚本。",
     "contact": "QQ群: 123456789",
     "license": "MIT",
