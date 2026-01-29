@@ -33,7 +33,7 @@
             "entry": "quli",
             "option": ["魔之楔挑战等级"],
             "default_check": false,
-            "description": "黎瑟主控，按键布局为官方默认第一套，注意：黎瑟需要一定练度"
+            "description": "请在开始挑战界面启动任务，目前仅支持黎瑟主控，按键布局为官方默认第一套，注意：黎瑟需要一定练度"
         }
     ],
     "option": {
