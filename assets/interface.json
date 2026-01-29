@@ -3,6 +3,7 @@
     "name": "BQMaaDNA",
     "title": "BQMaaDNA",
     "description": "这是一个BQ使用 MaaFramework 创建的二重螺旋自动化脚本。",
+    "icon": "logo.ico",
     "contact": "QQ群: 123456789",
     "license": "MIT",
     "welcome": "首次使用！欢迎使用 BQMaaDNA!",
@@ -34,7 +35,12 @@
             "entry": "quli",
             "option": ["魔之楔挑战等级"],
             "default_check": false,
-            "description": "请在开始挑战界面启动任务，目前仅支持黎瑟主控，按键布局为官方默认第一套，注意：黎瑟需要一定练度"
+            "description": "请在开始挑战界面启动任务，目前仅支持黎瑟主控"
+        },
+        {
+            "name":"使用说明",
+            "default_check": false,
+            "description": "本项目持续更新中，请将模拟器分辨率调至16：9，否则可能会导致任务失败，按键布局选择官方默认第一套。"
         }
     ],
     "option": {

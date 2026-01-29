@@ -1,31 +1,23 @@
-name: BQmaaDNA Build and Release
+name: install 
 
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
+      - "v*"
     branches:
       - "**"
     paths:
-      - ".github/workflows/install-merged.yml"
+      - ".github/workflows/install.yml"
       - "assets/**"
       - "**.py"
   pull_request:
     branches:
       - "**"
     paths:
-      - ".github/workflows/install-merged.yml"
+      - ".github/workflows/install.yml"
       - "assets/**"
       - "**.py"
   workflow_dispatch:
-
-env:
-  MAA_FRAMEWORK_VERSION: "v5.5.0-beta.1"
-  MFAA_VERSION: "v2.5.6"
-
-permissions:
-  contents: write
-  actions: write
 
 jobs:
   meta:
@@ -37,22 +29,17 @@ jobs:
       - id: set_tag
         run: |
           # 检查标签格式
-          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*)?$ ]]; then
-            is_release=true
-            tag=${GITHUB_REF#refs/tags/}
-            echo "Release tag format is valid: $tag"
-          else
-            is_release=false
-            # 获取最新的发布标签
-            tag=$(curl -sX GET "https://api.github.com/repos/${{ github.repository }}/releases/latest" --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' | awk '/tag_name/{print $4}' FS='["\"]')
-            if [[ ! $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-              echo "No valid release tag found, using v0.0.0"
+          is_release=${{ startsWith(github.ref, 'refs/tags/v') }}
+          tag=$(git describe --tags --match "v*" ${{ github.ref }} || true)
+          if [[ $tag != v* ]]; then
+            tag=$(curl -sX GET "https://api.github.com/repos/${{ github.repository }}/releases/latest" --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' | awk '/tag_name/{print $4}' FS='["]')
+            if [[ $tag != v* ]]; then
               tag="v0.0.0"
             fi
             tag=$(date "+$tag-%y%m%d-$(git rev-parse --short HEAD)")
           fi
 
-          if [ "$is_release" != "true" ] ; then
+          if ! $($is_release) ; then
             prefix=${tag%-*-*}
             suffix=${tag#$prefix-}
             tag="$prefix-ci.$suffix"
@@ -73,47 +60,14 @@ jobs:
       is_release: ${{ steps.set_tag.outputs.is_release }}
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
-  build:
+  install:
     needs: meta
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [win, linux, macos]
-        arch: [x86_64, aarch64]
-        include:
-          - os: win
-            arch: x86_64
-            runner: windows-latest
-            platform_tag: win-x64
-            mfaa_platform: win-x64
-          - os: win
-            arch: aarch64
-            runner: windows-11-arm
-            platform_tag: win-arm64
-            mfaa_platform: win-arm64
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-            platform_tag: linux-x64
-            mfaa_platform: linux-x64
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-latest
-            platform_tag: linux-arm64
-            mfaa_platform: linux-arm64
-          - os: macos
-            arch: x86_64
-            runner: macos-15-intel
-            platform_tag: osx-x64
-            mfaa_platform: osx-x64
-          - os: macos
-            arch: aarch64
-            runner: macos-latest
-            platform_tag: osx-arm64
-            mfaa_platform: osx-arm64
+        os: [win, macos, linux, android]
+        arch: [aarch64, x86_64]
       fail-fast: false
-
-    runs-on: ${{ matrix.runner }}
-    name: Build ${{ matrix.platform_tag }}
 
     steps:
       - uses: actions/checkout@v4
@@ -125,128 +79,63 @@ jobs:
         with:
           repository: MaaXYZ/MaaFramework
           fileName: "MAA-${{ matrix.os }}-${{ matrix.arch }}*"
-          tag: ${{ env.MAA_FRAMEWORK_VERSION }}
+          latest: true
           out-file-path: "deps"
           extract: true
 
       - name: Download MFAAvalonia
+        if: matrix.os != 'android'
         id: download_mfa
         uses: robinraju/release-downloader@v1
         with:
           repository: SweetSmellFox/MFAAvalonia
-          fileName: "MFAAvalonia-*-${{ matrix.mfaa_platform }}*"
-          tag: ${{ env.MFAA_VERSION }}
+          fileName: "MFAAvalonia-*-${{ (matrix.os == 'win' && 'win') || (matrix.os == 'macos' && 'osx') || (matrix.os == 'linux' && 'linux') }}-${{ (matrix.arch == 'x86_64' && 'x64') || (matrix.arch == 'aarch64' && 'arm64') }}*"
+          latest: true
           out-file-path: "MFA"
           extract: true
 
       - name: Clean up MFAAvalonia archive
+        if: matrix.os != 'android'
         shell: bash
         run: |
           ARCHIVE_FILE_PATH="${{ fromJson(steps.download_mfa.outputs.downloaded_files)[0] }}"
           rm -f "${ARCHIVE_FILE_PATH}"
-          echo "Archive cleanup command executed for MFAAvalonia on ${{ matrix.platform_tag }}."
+          echo "Archive cleanup command executed for MFAAvalonia."
 
-      - name: Setup Python environment
+      - name: Remove built-in runtime in MFA
+        if: matrix.os != 'android'
         shell: bash
         run: |
-          if [[ "${{ matrix.os }}" == "win" ]]; then
-            # Windows setup
-            python tools/ci/setup_embed_python.py
-            PYTHON_EXECUTABLE="./install/python/python.exe"
-          elif [[ "${{ matrix.os }}" == "macos" ]]; then
-            # macOS setup
-            python3 tools/ci/setup_embed_python.py
-            PYTHON_EXECUTABLE="./install/python/bin/python3"
-            chmod +x "$PYTHON_EXECUTABLE" 2>/dev/null || true
-          else
-            # Linux setup
-            PYTHON_EXECUTABLE="python"
-          fi
+          rm -rf MFA/runtimes
           
-          echo "PYTHON_EXECUTABLE=$PYTHON_EXECUTABLE" >> $GITHUB_ENV
-
-      - name: Download Python dependencies
+      - name: Install
         shell: bash
         run: |
-          "$PYTHON_EXECUTABLE" tools/ci/download_deps.py --deps-dir install/deps
-
-      - name: Install application
-        shell: bash
-        run: |
-          "$PYTHON_EXECUTABLE" ./tools/ci/install.py ${{ needs.meta.outputs.tag }} ${{ matrix.platform_tag }}
-          
-          # Copy registry files if they exist
-          if [[ -d "tools/registry" ]]; then
-            cp -rpvn tools/registry/. install/
-          fi
-
-      - name: Create CLI version
-        shell: bash
-        run: |
-          "$PYTHON_EXECUTABLE" ./tools/ci/install_cli.py ${{ needs.meta.outputs.tag }}
-          
-          # Copy Python files to CLI version
-          if [[ -d "install/python" ]]; then
-            cp -rpvn install/python/. install-cli/python/
-          fi
-          
-          # Clean up unnecessary files for CLI version
-          rm -rf install-cli/deps 2>/dev/null || true
-
-      - name: Copy MFA files to main version
-        shell: bash
-        run: |
-          if [ -d "MFA" ]; then
-            echo "Copying MFA files to install directory on ${{ matrix.platform_tag }}..."
-            mkdir -p install
-            if [[ "${{ matrix.os }}" == "win" ]]; then
-              cp -rpvn MFA/. install/
-            else
+          if [[ "${{ matrix.os }}" != "android" ]]; then
+            if [ -d "MFA" ]; then
+              echo "Copying MFA files to install directory..."
+              mkdir -p install
               rsync -av --ignore-existing MFA/ install/
+              echo "MFA files copied successfully."
+            else
+              echo "MFA directory not found, skipping copy."
             fi
           else
-            echo "MFA directory not found on ${{ matrix.platform_tag }}, skipping copy."
+            echo "Skipping copy MFA for Android."
           fi
 
-      - name: Process assets directory
-        shell: bash
-        run: |
-          # Create assets directory structure
-          mkdir -p install/assets
-          
-          # Copy custom assets if they exist
-          if [[ -d "assets" ]]; then
-            cp -rpvn assets/. install/assets/
-          fi
+          cd tools/
+          python -m pip install -r ./requirements.txt
+          python ./install.py ${{ needs.meta.outputs.tag }} ${{ matrix.os }} ${{ matrix.arch }}
+          cd ..
 
-      - name: Set executable permissions for Unix systems
-        if: matrix.os != 'win'
-        shell: bash
-        run: |
-          # Set execute permissions for main executable files
-          if [[ -f "install/MaaPiCli" ]]; then
-            chmod +x "install/MaaPiCli"
-          fi
-          
-          # Set execute permissions for MFAAvalonia files
-          find "install" -type f -name "MFAAvalonia*" -exec chmod +x {} \; 2>/dev/null || true
-          
-          # Set execute permissions for Python files
-          if [[ "${{ matrix.os }}" == "macos" && -f "./install/python/bin/python3" ]]; then
-            chmod +x "./install/python/bin/python3"
-          fi
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: BQmaaDNA-${{ matrix.platform_tag }}-${{ needs.meta.outputs.tag }}
-          path: |
-            install/
-            install-cli/
+          name: BQMaaDNA-${{ matrix.os }}-${{ matrix.arch }}
+          path: "install"
 
   changelog:
     name: Generate changelog
-    needs: meta
     runs-on: ubuntu-latest
     outputs:
       release_body: ${{ steps.git-cliff.outputs.content }}
@@ -261,52 +150,42 @@ jobs:
         id: git-cliff
         with:
           config: .github/cliff.toml
-          args: >-
-            -vv --latest --strip header
-            ${{ needs.meta.outputs.is_prerelease == 'false' && '--tag-pattern "^v[0-9]+\.[0-9]+\.[0-9]+$"' || '' }}
+          args: -vv --latest --strip header
         env:
           OUTPUT: CHANGES.md
           GITHUB_REPO: ${{ github.repository }}
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
-    needs: [meta, build, changelog]
+    needs: [meta, install, changelog]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: assets
 
-      - name: Package artifacts
-        run: |
+      - run: |
           cd assets
           for f in *; do
-            echo "Processing artifact: $f"
-            
-            if [[ $f == *"win"* ]]; then
-              # Windows artifacts - zip format
-              (cd "$f" && zip -r "../$f.zip" .)
-            else
-              # Unix artifacts - tar.gz format
-              if [[ -f "$f/MaaPiCli" ]]; then
-                chmod +x "$f/MaaPiCli"
-              fi
-              
-              # Set execute permissions for all executable files
-              find "$f" -type f -name "MFAAvalonia*" -exec chmod +x {} \; 2>/dev/null || true
-              find "$f" -type f -name "MFAUpdater*" -exec chmod +x {} \; 2>/dev/null || true
-              find "$f" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-              
-              # Create tar.gz archive with preserved permissions
-              tar -cpzf "../$f.tar.gz" -C "$f" .
-            fi
+            (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
           done
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.2.2
+          
+      - uses: softprops/action-gh-release@v2
         with:
           files: assets/*
           tag_name: ${{ needs.meta.outputs.tag }}
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false
           prerelease: ${{ needs.meta.outputs.is_prerelease == 'true' }}
+
+        # Mirror酱为第三方分发服务，新项目默认关闭
+        # 若有需要请联系 Mirror酱 开通，直接自行开启是无法使用的
+        # https://mirrorchyan.com/
+      - name: Trigger MirrorChyanUploading
+        if: false
+        shell: bash
+        run: |
+          gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release.yml -f tag=${{ needs.meta.outputs.tag }}
+          gh workflow run --repo $GITHUB_REPOSITORY mirrorchyan_release_note.yml -f tag=${{ needs.meta.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
