@@ -102,6 +102,17 @@ jobs:
           rm -f "${ARCHIVE_FILE_PATH}"
           echo "Archive cleanup command executed for MFAAvalonia."
 
+      - name: Change executable icon on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # 下载rcedit
+          curl -L https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe -o rcedit.exe
+            
+            # 使用rcedit修改图标（请修改以下路径）
+            ./rcedit.exe "MFA/MFAAvalonia.exe" --set-icon "assets/logo.ico"
+  
+
       - name: Remove built-in runtime in MFA
         if: matrix.os != 'android'
         shell: bash
@@ -133,16 +144,6 @@ jobs:
         with:
           name: BQMaaDNA-${{ matrix.os }}-${{ matrix.arch }}
           path: "install"
-
-      - name: Change executable icon on Windows
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          # 下载rcedit
-          curl -L https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe -o rcedit.exe
-            
-            # 使用rcedit修改图标（请修改以下路径）
-            ./rcedit.exe "MFA/MFAAvalonia.exe" --set-icon "assets/logo.ico"
   
   changelog:
     name: Generate changelog
