@@ -31,12 +31,20 @@
         "recognition": "OCR",
         "action": "Click",
         "post_delay": 1000,
-        "expected": ["开始挑战"],
-        "next":["开始挑战2"]
+        "expected": ["开始挑战"]
     }, 
+    "使用绿书":{
+        "recognition": "DirectHit",
+        "action": "Click",
+        "post_delay": 1000,
+        "target_offset": [485,396,0,0],
+        "next": ["开始挑战2"]
+    },
     "开始挑战2": {
         "recognition": "OCR",
+        "post_delay": 1000,
         "action": "Click",
+        "roi": [657,478,251,37],
         "expected": ["开始挑战"],
         "next": ["在驱离副本中"]
     }

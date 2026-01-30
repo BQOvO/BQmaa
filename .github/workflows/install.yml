@@ -61,7 +61,7 @@ jobs:
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
   install:
-    needs: meta
+    needs: [meta]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -134,6 +134,16 @@ jobs:
           name: BQMaaDNA-${{ matrix.os }}-${{ matrix.arch }}
           path: "install"
 
+      - name: Change executable icon on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # 下载rcedit
+          curl -L https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe -o rcedit.exe
+            
+            # 使用rcedit修改图标（请修改以下路径）
+            ./rcedit.exe "MFA/MFAAvalonia.exe" --set-icon "assets/logo.ico"
+  
   changelog:
     name: Generate changelog
     runs-on: ubuntu-latest
@@ -144,7 +154,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+  
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v4
         id: git-cliff
@@ -163,7 +173,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: assets
-
+  
       - run: |
           cd assets
           for f in *; do
@@ -177,7 +187,7 @@ jobs:
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false
           prerelease: ${{ needs.meta.outputs.is_prerelease == 'true' }}
-
+  
         # Mirror酱为第三方分发服务，新项目默认关闭
         # 若有需要请联系 Mirror酱 开通，直接自行开启是无法使用的
         # https://mirrorchyan.com/
